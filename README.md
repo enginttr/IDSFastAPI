@@ -4,8 +4,8 @@ Ben Yasemin Kızılkan Tatar. Projem, FastAPI framework’ü yüksek performansl
 Saldırı Tespit Sistemi Geliştirilmesi.
 
 Model klasörü içerisine "knn_model.pkl" dosyasını yükleyemedim. 
-Github max 25mb boyutundaki dosyaları kabul ediyor. Bu model dosyası boyutu 97.5mb. Sıkıştırsam dahi maalesef 25mb'a kadar düşmüyor.
+Github max 25mb boyutundaki dosyaları kabul ediyor. Bu model dosyası boyutu 97.5mb. Sıkıştırsam dahi maalesef 25mb'a kadar düşmüyor. Dilerseniz farklı bir yol ile size yine iletmeye çalışırım. 
 
 Proje raporumda eklidir.
 
-Dilerseniz farklı bir yol ile size yine iletmeye çalışırım. 
+
