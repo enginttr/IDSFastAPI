@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>IDS Advanced Demo Panel</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h1 {
+            color: #38bdf8;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .panel {
+            background: #1e293b;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+        }
+
+        button {
+            background: #38bdf8;
+            color: #020617;
+            border: none;
+            padding: 14px 22px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #0ea5e9;
+        }
+
+        button:disabled {
+            background: #475569;
+            color: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        .decision {
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .attack {
+            color: #f87171;
+        }
+
+        .normal {
+            color: #4ade80;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .card {
+            background: #020617;
+            border-radius: 14px;
+            padding: 18px;
+            border: 1px solid #334155;
+        }
+
+        .card h2 {
+            color: #facc15;
+            margin-top: 0;
+        }
+
+        .metric {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+
+        .bar-wrapper {
+            background: #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 16px;
+            margin-top: 6px;
+        }
+
+        .bar {
+            height: 16px;
+            background: #38bdf8;
+            width: 0%;
+        }
+
+        .importance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            font-size: 13px;
+        }
+
+        .importance-table th,
+        .importance-table td {
+            border-bottom: 1px solid #334155;
+            padding: 6px;
+            text-align: left;
+        }
+
+        .importance-table th {
+            color: #93c5fd;
+        }
+
+        .small {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        pre {
+            background: #020617;
+            padding: 14px;
+            border-radius: 10px;
+            overflow-x: auto;
+            color: #c4b5fd;
+            max-height: 350px;
+        }
+
+        @media (max-width: 1000px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Makine Öğrenmesi Tabanlı IDS Demo Paneli</h1>
+
+    <p class="small">
+        Random Forest, KNN ve SVM algoritmaları ile saldırı tespit sistemi
+    </p>
+
+    <div class="panel">
+
+        <button id="btnAnalyze" onclick="analyzeTraffic()">
+            Yeni Network Trafiği Analiz Et
+        </button>
+
+        <p id="loadingText"
+           class="small"
+           style="display:none; margin-top:10px;">
+
+            Trafik analiz ediliyor, lütfen bekleyin...
+
+        </p>
+
+    </div>
+
+    <div class="panel">
+
+        <h2>Final IDS Kararı</h2>
+
+        <div id="finalDecision" class="decision">
+            Henüz trafik analizi yapılmadı
+        </div>
+
+        <p id="voteInfo" class="small"></p>
+
+    </div>
+
+    <div class="cards" id="modelCards"></div>
+
+    <div class="panel">
+
+        <h2>Gönderilen Feature Verisi</h2>
+
+        <pre id="requestPayload">{}</pre>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE_URL = "http://127.0.0.1:8010";
+
+    let selectedFeatures = [];
+
+    async function loadFeatures() {
+
+        const response = await fetch(`${API_BASE_URL}/features`);
+        const data = await response.json();
+
+        selectedFeatures = data.selected_features;
+    }
+
+    function setLoading(isLoading) {
+
+        document.getElementById("btnAnalyze").disabled = isLoading;
+
+        document.getElementById("loadingText").style.display =
+            isLoading ? "block" : "none";
+    }
+
+    async function getSamplePayload(type) {
+
+        const response = await fetch(`${API_BASE_URL}/sample/${type}`);
+
+        const data = await response.json();
+
+        return {
+            features: data.features
+        };
+    }
+
+    async function sendPayload(payload) {
+
+        try {
+
+            setLoading(true);
+
+            document.getElementById("requestPayload").textContent =
+                JSON.stringify(payload, null, 2);
+
+            const response = await fetch(`${API_BASE_URL}/predict`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            renderResult(result);
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("API isteği sırasında hata oluştu.");
+
+        } finally {
+
+            setLoading(false);
+        }
+    }
+
+    async function analyzeTraffic() {
+
+        const randomChoice = Math.random();
+
+        let payload;
+
+        if (randomChoice < 0.5) {
+            payload = await getSamplePayload("attack");
+        } else {
+            payload = await getSamplePayload("normal");
+        }
+
+        await sendPayload(payload);
+    }
+
+    function renderResult(result) {
+
+        const finalDecision =
+            document.getElementById("finalDecision");
+
+        finalDecision.textContent = result.final_decision;
+
+        if (result.final_decision === "Attack") {
+            finalDecision.className = "decision attack";
+        }
+        else {
+            finalDecision.className = "decision normal";
+        }
+
+        document.getElementById("voteInfo").textContent =
+            `Attack Vote: ${result.attack_vote_count} | Normal Vote: ${result.normal_vote_count}`;
+
+        const modelCards =
+            document.getElementById("modelCards");
+
+        modelCards.innerHTML = "";
+
+        Object.keys(result.models).forEach(key => {
+
+            const model = result.models[key];
+
+            const topFeatures =
+                Object.entries(model.feature_importance)
+                    .slice(0, 8);
+
+            const featureRows = topFeatures.map(([feature, value]) => `
+                <tr>
+                    <td>${feature}</td>
+                    <td>${value}%</td>
+                </tr>
+            `).join("");
+
+            const predictionClass =
+                model.prediction === "Attack"
+                    ? "attack"
+                    : "normal";
+
+            const card = `
+                <div class="card">
+
+                    <h2>${model.model_name}</h2>
+
+                    <div class="metric">
+                        Tahmin:
+                        <strong class="${predictionClass}">
+                            ${model.prediction}
+                        </strong>
+                    </div>
+
+                    <div class="metric">
+                        Attack Olasılığı:
+                        <strong>${model.attack_percentage}%</strong>
+
+                        <div class="bar-wrapper">
+                            <div class="bar"
+                                 style="width:${model.attack_percentage}%">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric">
+                        Accuracy:
+                        <strong>${model.metrics.accuracy}%</strong>
+                    </div>
+
+                    <div class="metric">
+                        Precision:
+                        <strong>${model.metrics.precision}%</strong>
+                    </div>
+
+                    <div class="metric">
+                        Recall:
+                        <strong>${model.metrics.recall}%</strong>
+                    </div>
+
+                    <div class="metric">
+                        F1-Score:
+                        <strong>${model.metrics.f1_score}%</strong>
+                    </div>
+
+                    <h3>Top Feature Katkıları</h3>
+
+                    <table class="importance-table">
+
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Katkı</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            ${featureRows}
+                        </tbody>
+
+                    </table>
+
+                </div>
+            `;
+
+            modelCards.innerHTML += card;
+        });
+    }
+
+    loadFeatures();
+
+</script>
+
+</body>
+</html>

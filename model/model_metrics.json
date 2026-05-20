@@ -1,0 +1,20 @@
+{
+    "random_forest": {
+        "accuracy": 99.78,
+        "precision": 99.51,
+        "recall": 99.57,
+        "f1_score": 99.54
+    },
+    "knn": {
+        "accuracy": 99.61,
+        "precision": 98.99,
+        "recall": 99.38,
+        "f1_score": 99.19
+    },
+    "svm": {
+        "accuracy": 91.89,
+        "precision": 84.65,
+        "recall": 81.3,
+        "f1_score": 82.94
+    }
+}
